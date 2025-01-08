@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RegisterRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -10,26 +11,28 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+            $token = $user->createToken('authToken')->accessToken;
 
-        $token = $user->createToken('authToken')->accessToken;
+            return response()->json([
+                'token' => $token,
+                'user' => $user,
+            ], 201);
 
-        return response()->json([
-            'token' => $token,
-            'user' => $user,
-        ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'An error occurred during registration.',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function login(Request $request)
